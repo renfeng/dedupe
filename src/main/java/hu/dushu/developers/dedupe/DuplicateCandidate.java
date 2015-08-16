@@ -5,27 +5,20 @@ import com.google.api.client.util.Key;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class DuplicateCandicate extends SolrDoc {
-
-//	@Key("id")
-//	private String path;
+public class DuplicateCandidate extends SolrDoc {
 
 	@Key("directory_b")
 	private boolean directory;
 
-	@Key("length_i")
+	@Key("length_l")
 	private long length;
 
 	@Key("md5_s")
 	private String md5;
 
-//	public String getPath() {
-//		return path;
-//	}
-//
-//	public void setPath(String path) {
-//		this.path = path;
-//	}
+	public DuplicateCandidate() {
+		setType(DUPLICATE_CANDIDATE_TYPE);
+	}
 
 	public long getLength() {
 		return length;
@@ -54,5 +47,8 @@ public class DuplicateCandicate extends SolrDoc {
 	@Override
 	public String toString() {
 		return getId() + " directory:" + isDirectory() + " length:" + getLength() + " md5:" + getMd5();
+	}
+
+	public static class SolrSelectResponse extends GenericSolrSelectResponse<DuplicateCandidate> {
 	}
 }

@@ -5,22 +5,22 @@ import com.google.api.client.util.Key;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class SolrSelectResponse {
+public class GenericSolrSelectResponse<T extends SolrDoc> {
 
 //	@Key
 //	private SolrResponseHeader responseHeader;
 
 	@Key
-	private SolrResponse response;
+	private GenericSolrResponse<T> response;
 
 	@Key("facet_counts")
 	private SolrFacetCounts facetCounts;
 
-	public SolrResponse getResponse() {
+	public GenericSolrResponse<T> getResponse() {
 		return response;
 	}
 
-	public void setResponse(SolrResponse response) {
+	public void setResponse(GenericSolrResponse<T> response) {
 		this.response = response;
 	}
 

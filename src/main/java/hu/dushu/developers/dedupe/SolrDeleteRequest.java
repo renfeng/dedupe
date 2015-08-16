@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class SolrDelete {
+public class SolrDeleteRequest {
 
 	@Key
 	private List<String> delete;

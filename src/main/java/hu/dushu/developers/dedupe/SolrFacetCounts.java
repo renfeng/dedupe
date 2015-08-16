@@ -8,16 +8,16 @@ import com.google.api.client.util.Key;
 public class SolrFacetCounts {
 
 //	@Key("facet_queries")
-//	private Object facetQueries;
+//	private SolrFacetQueries facetQueries;
 
 	@Key("facet_fields")
 	private SolrFacetFields facetFields;
 
 //	@Key("facet_dates")
-//	private Object facetDates;
+//	private SolrFacetDates facetDates;
 
 //	@Key("facet_ranges")
-//	private Object facetRanges;
+//	private SolrFacetRanges facetRanges;
 
 	public SolrFacetFields getFacetFields() {
 		return facetFields;

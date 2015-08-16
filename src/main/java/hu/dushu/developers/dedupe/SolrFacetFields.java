@@ -9,7 +9,7 @@ import java.util.List;
  */
 public class SolrFacetFields {
 
-	@Key("length_i")
+	@Key("length_l")
 	private List<Object> length;
 
 	public List<Object> getLength() {

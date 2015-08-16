@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class SolrResponse {
+public class GenericSolrResponse<T extends SolrDoc> {
 
 	@Key
 	private int numFound;
@@ -16,13 +16,13 @@ public class SolrResponse {
 	private int start;
 
 	@Key
-	private List<DuplicateCandicate> docs;
+	private List<T> docs;
 
-	public List<DuplicateCandicate> getDocs() {
+	public List<T> getDocs() {
 		return docs;
 	}
 
-	public void setDocs(List<DuplicateCandicate> docs) {
+	public void setDocs(List<T> docs) {
 		this.docs = docs;
 	}
 
