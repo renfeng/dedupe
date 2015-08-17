@@ -18,9 +18,15 @@ public class JarEntryDuplicateCandidate extends DuplicateCandidate implements Co
 
 	/**
 	 * containing jar. null for a jar itself
+	 * <p/>
+	 * context
+	 * http://download.java.net/jdk7/archive/b123/docs/api/java/net/JarURLConnection.html
 	 */
 	@Key("jar_s")
 	private String jar;
+
+	@Key("entry_s")
+	private String entry;
 
 	public JarEntryDuplicateCandidate() {
 		setType(JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE);
@@ -42,6 +48,14 @@ public class JarEntryDuplicateCandidate extends DuplicateCandidate implements Co
 		this.jar = jar;
 	}
 
+	public String getEntry() {
+		return entry;
+	}
+
+	public void setEntry(String entry) {
+		this.entry = entry;
+	}
+
 	@Override
 	public String toString() {
 		return getId() + " tags:" + Arrays.toString(getTags().toArray()) + " length:" + getLength() + " md5:" + getMd5();
@@ -49,7 +63,11 @@ public class JarEntryDuplicateCandidate extends DuplicateCandidate implements Co
 
 	@Override
 	public int compareTo(JarEntryDuplicateCandidate o) {
-		return -Long.compare(getLength(), o.getLength());
+		int result = -Long.compare(getLength(), o.getLength());
+		if (result == 0) {
+			result = getEntry().compareTo(o.getEntry());
+		}
+		return result;
 	}
 
 	public static class SolrSelectResponse extends GenericSolrSelectResponse<JarEntryDuplicateCandidate> {

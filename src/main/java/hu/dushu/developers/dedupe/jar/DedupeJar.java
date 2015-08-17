@@ -97,9 +97,9 @@ public class DedupeJar extends Dedupe {
 				if (jars.isEmpty()) {
 					List<Long> duplicateLengths = new ArrayList<>();
 					{
-					/*
-					 * retrieve files with same size (without hash)
-					 */
+						/*
+						 * retrieve files with same size (without hash)
+						 */
 						HttpRequest request = factory.buildGetRequest(new GenericUrl(selectDuplicateLengthUrl));
 						HttpResponse response = request.execute();
 						JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
@@ -114,11 +114,11 @@ public class DedupeJar extends Dedupe {
 					}
 					Collections.sort(duplicateLengths, Collections.reverseOrder());
 					for (long length : duplicateLengths) {
-					/*
-					 * update hash of files with same size
-					 *
-					 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
-					 */
+						/*
+						 * update hash of files with same size
+						 *
+						 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
+						 */
 						HttpRequest request = factory.buildGetRequest(new GenericUrl(selectJarEntryWithoutMd5Url + length));
 						HttpResponse response = request.execute();
 						JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =

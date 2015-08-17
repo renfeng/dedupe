@@ -33,7 +33,7 @@ public class Dedupe {
 				}
 			});
 
-	protected static final String urlBase = "http://localhost:8983/solr/collection1/";
+	protected static final String urlBase = "http://localhost:8983/solr/solr/";
 
 	/*
 	 * https://cwiki.apache.org/confluence/display/solr/Uploading+Data+with+Index+Handlers
