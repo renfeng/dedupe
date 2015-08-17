@@ -14,10 +14,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by renfeng on 8/15/15.
@@ -26,18 +23,27 @@ public class Dedupe {
 
 	static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
 
-	static final JacksonFactory jsonFactory = new JacksonFactory();
-	static final HttpTransport transport = new NetHttpTransport();
+	protected static final JacksonFactory jsonFactory = new JacksonFactory();
 
-	static final String urlBase = "http://localhost:8983/solr/collection1/";
+	protected static final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
+			new HttpRequestInitializer() {
+				@Override
+				public void initialize(HttpRequest request) throws IOException {
+					request.setParser(new JsonObjectParser(jsonFactory));
+				}
+			});
+
+	protected static final String urlBase = "http://localhost:8983/solr/collection1/";
 
 	/*
+	 * https://cwiki.apache.org/confluence/display/solr/Uploading+Data+with+Index+Handlers
+	 *
 	 * id - path
 	 * directory_b
 	 * length_l
 	 * md5_s
 	 */
-	static final String updateUrl = urlBase + "update?wt=json&commit=true";
+	protected static final String updateUrl = urlBase + "update?wt=json&commit=true";
 
 	/*
 	 * simulates a task queue
@@ -60,21 +66,13 @@ public class Dedupe {
 
 	public static void main(String... args) throws IOException, NoSuchAlgorithmException {
 
-		HttpRequestFactory factory = transport.createRequestFactory(new HttpRequestInitializer() {
-			@Override
-			public void initialize(HttpRequest request) throws IOException {
-				request.setParser(new JsonObjectParser(new JacksonFactory()));
-			}
-		});
-
-		boolean done = false;
 		int pass = 0;
 		do {
 			List<DuplicateCandidate> update = new ArrayList<>();
 			List<DuplicateCandidate> delete = new ArrayList<>();
 
 			/*
-			 * TODO retrieve directories from solr
+			 * retrieve directories from solr
 			 */
 			List<File> directories = new ArrayList<>();
 			{
@@ -138,9 +136,9 @@ public class Dedupe {
 						directories.add(new File(home, "Music"));
 						directories.add(new File(home, "Pictures"));
 						directories.add(new File(home, "Public"));
-						directories.add(new File(home, "Video"));
+						directories.add(new File(home, "Videos"));
 					} else {
-						done = true;
+						break;
 					}
 				}
 			}
@@ -152,17 +150,17 @@ public class Dedupe {
 					continue;
 				}
 				for (File f : files) {
-					DuplicateCandidate data = new DuplicateCandidate();
+					DuplicateCandidate doc = new DuplicateCandidate();
 
 					if (f.isDirectory()) {
-						data.setDirectory(true);
+						doc.setDirectory(true);
 					} else {
-						data.setLength(f.length());
+						doc.setLength(f.length());
 					}
 
-					data.setId(f.getPath());
+					doc.setId(f.getPath());
 
-					update.add(data);
+					update.add(doc);
 				}
 			}
 
@@ -185,6 +183,17 @@ public class Dedupe {
 			}
 
 			pass++;
-		} while (!done);
+		} while (true);
+	}
+
+	public static void clear() throws IOException {
+		HashMap<String, Map<String, String>> data = new HashMap<>();
+		HashMap<String, String> query = new HashMap<>();
+		query.put("query", "type_s:" + SolrDoc.DUPLICATE_CANDIDATE_TYPE);
+		data.put("delete", query);
+
+		HttpRequest request = factory.buildPostRequest(
+				new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, data));
+		request.execute();
 	}
 }

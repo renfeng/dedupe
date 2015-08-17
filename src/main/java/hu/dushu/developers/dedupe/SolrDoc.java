@@ -3,14 +3,19 @@ package hu.dushu.developers.dedupe;
 import com.google.api.client.util.Key;
 
 /**
+ * https://cwiki.apache.org/confluence/display/solr/Apache+Solr+Reference+Guide
+ * 
  * Created by renfeng on 8/15/15.
  */
 public class SolrDoc {
 
 	/*
-	 * TODO fix typo and replace the values in solr index
+	 * TODO rename and replace the values in solr index
 	 */
-	public static final String DUPLICATE_CANDIDATE_TYPE = "hu.dushu.developers.dedupe.DuplicateCandicate";
+	public static final String DUPLICATE_CANDIDATE_TYPE =
+			"hu.dushu.developers.dedupe.DuplicateCandicate";
+	public static final String JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE =
+			"hu.dushu.developers.dedupe.jar.JarResourceDuplicateCandidate";
 
 	@Key
 	private String id;
