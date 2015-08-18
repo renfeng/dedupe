@@ -6,24 +6,28 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.SortedMap;
 
 /**
  * Created by frren on 8/18/2015.
  */
 public class DedupeJarTest {
 
+	final DedupeJar dedupeJar = new DedupeJar();
+
 	@Test
 	public void test() throws IOException, EncoderException {
-
-		DedupeJar dedupeJar = new DedupeJar();
 
 //		dedupeJar.clear();
 
 		dedupeJar.refresh();
+	}
 
-		Map<String, Integer> map = dedupeJar.listJarsWithoutTag("approved");
+	@Test
+	public void testListJarsWithoutTagApproved() throws IOException, EncoderException {
+		SortedMap<String, Integer> map = dedupeJar.listJarsWithoutTag("approved");
 		Iterator<Map.Entry<String, Integer>> iterator = map.entrySet().iterator();
-		if (iterator.hasNext()) {
+		while (iterator.hasNext()) {
 			Map.Entry<String, Integer> entry = iterator.next();
 			String jar = entry.getKey();
 			Integer count = entry.getValue();

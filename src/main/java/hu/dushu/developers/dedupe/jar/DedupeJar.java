@@ -390,14 +390,14 @@ public class DedupeJar extends Dedupe {
 		}
 	}
 
-	protected Map<String, Integer> listJarsWithoutTag(String tag) throws IOException, EncoderException {
+	protected SortedMap<String, Integer> listJarsWithoutTag(String tag) throws IOException, EncoderException {
 
 		/*
 		 * list all jars
 		 * http://localhost:8983/solr/solr/select?wt=json&rows=0&facet=true&facet.field=jar_s&facet.limit=-1&q=type_s:hu.dushu.developers.dedupe.jar.JarResourceDuplicateCandidate
 		 */
 
-		Map<String, Integer> map = new HashMap<>();
+		SortedMap<String, Integer> map = new TreeMap<>();
 
 		String url = selectJarWithoutTagUrl(tag);
 		logger.info("listing jars without tag, {}", url);
