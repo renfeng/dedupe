@@ -13,7 +13,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 /**
@@ -21,11 +20,11 @@ import java.util.*;
  */
 public class Dedupe {
 
-	static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
+	private static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
 
-	protected static final JacksonFactory jsonFactory = new JacksonFactory();
+	protected final JacksonFactory jsonFactory = new JacksonFactory();
 
-	protected static final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
+	protected final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
 			new HttpRequestInitializer() {
 				@Override
 				public void initialize(HttpRequest request) throws IOException {
@@ -37,11 +36,11 @@ public class Dedupe {
 	 * wget http://archive.apache.org/dist/lucene/solr/4.10.4/solr-4.10.4-src.tgz
 	 * tar xf solr-4.10.4-src.tgz
 	 * cd solr-4.10.4/solr
-	 * ant example
+	 * ant ivy-bootstrap example
 	 * cd example
 	 * java -Dsolr.solr.home=example-DIH/solr -jar start.jar
 	 */
-	protected static final String urlBase = "http://localhost:8983/solr/solr/";
+	protected final String urlBase = "http://localhost:8983/solr/solr/";
 
 	/*
 	 * https://cwiki.apache.org/confluence/display/solr/Uploading+Data+with+Index+Handlers
@@ -51,28 +50,28 @@ public class Dedupe {
 	 * length_l
 	 * md5_s
 	 */
-	protected static final String updateUrl = urlBase + "update?wt=json&commit=true";
+	protected final String updateUrl = urlBase + "update?wt=json&commit=true";
 
 	/*
 	 * simulates a task queue
 	 */
-	static final String selectDirectoryUrl = urlBase + "select?wt=json" +
-			"&q=type_s:" + SolrDoc.DUPLICATE_CANDIDATE_TYPE +
+	final String selectDirectoryUrl = urlBase + "select?wt=json" +
+			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
 			"&fq=directory_b:true";
 
 	/*
 	 * TODO consider the process can stop anytime, the files to be hashed may not be listed in a single query
 	 */
-	static final String selectDuplicateLengthUrl = urlBase + "select?wt=json" +
+	final String selectDuplicateLengthUrl = urlBase + "select?wt=json" +
 			"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
-			"&q=type_s:" + SolrDoc.DUPLICATE_CANDIDATE_TYPE +
+			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
 			"&fq=!directory_b:true";
 
-	static final String selectFileWithoutMd5Url = urlBase + "select?wt=json" +
-			"&q=type_s:" + SolrDoc.DUPLICATE_CANDIDATE_TYPE +
+	final String selectFileWithoutMd5Url = urlBase + "select?wt=json" +
+			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
 			"&fq=!directory_b:true AND !md5_s:[* TO *] AND length_l:";
 
-	public static void main(String... args) throws IOException, NoSuchAlgorithmException {
+	void refresh() throws IOException {
 
 		int pass = 0;
 		do {
@@ -103,8 +102,8 @@ public class Dedupe {
 					HttpResponse response = request.execute();
 					DuplicateCandidate.SolrSelectResponse selectResponse =
 							response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
-					SolrFacetCounts facetCounts = selectResponse.getFacetCounts();
-					SolrFacetFields facetFields = facetCounts.getFacetFields();
+					GenericSolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+					DedupeFacetFields facetFields = facetCounts.getFacetFields();
 					Iterator<Object> iterator = facetFields.getLength().iterator();
 					while (iterator.hasNext()) {
 						duplicateLengths.add(Long.parseLong((String) iterator.next()));
@@ -194,14 +193,36 @@ public class Dedupe {
 		} while (true);
 	}
 
-	public static void clear() throws IOException {
+	public void clear() throws IOException {
 		HashMap<String, Map<String, String>> data = new HashMap<>();
 		HashMap<String, String> query = new HashMap<>();
-		query.put("query", "type_s:" + SolrDoc.DUPLICATE_CANDIDATE_TYPE);
+		query.put("query", "type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE);
 		data.put("delete", query);
 
 		HttpRequest request = factory.buildPostRequest(
 				new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, data));
 		request.execute();
+	}
+
+	/**
+	 * http://grepcode.com/file_/repo1.maven.org/maven2/org.apache.solr/solr-solrj/4.10.3/org/apache/solr/client/solrj/util/ClientUtils.java/?v=source
+	 * <p/>
+	 * for more information on Escaping Special Characters
+	 * http://lucene.apache.org/core/4_0_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Escaping_Special_Characters
+	 */
+	public String escapeQueryChars(String s) {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < s.length(); i++) {
+			char c = s.charAt(i);
+			// These characters are part of the query syntax and must be escaped
+			if (c == '\\' || c == '+' || c == '-' || c == '!' || c == '(' || c == ')' || c == ':'
+					|| c == '^' || c == '[' || c == ']' || c == '\"' || c == '{' || c == '}' || c == '~'
+					|| c == '*' || c == '?' || c == '|' || c == '&' || c == ';' || c == '/'
+					|| Character.isWhitespace(c)) {
+				sb.append('\\');
+			}
+			sb.append(c);
+		}
+		return sb.toString();
 	}
 }

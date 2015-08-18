@@ -11,7 +11,9 @@ import java.util.List;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class JarEntryDuplicateCandidate extends DuplicateCandidate implements Comparable<JarEntryDuplicateCandidate> {
+public class JarEntryDuplicateCandidate
+		extends DuplicateCandidate
+		implements Comparable<JarEntryDuplicateCandidate> {
 
 	@Key("tag_ss")
 	private List<String> tags = new ArrayList<>();
@@ -70,6 +72,7 @@ public class JarEntryDuplicateCandidate extends DuplicateCandidate implements Co
 		return result;
 	}
 
-	public static class SolrSelectResponse extends GenericSolrSelectResponse<JarEntryDuplicateCandidate> {
+	public static class SolrSelectResponse
+			extends GenericSolrSelectResponse<JarEntryDuplicateCandidate, JarDedupeFacetFields> {
 	}
 }

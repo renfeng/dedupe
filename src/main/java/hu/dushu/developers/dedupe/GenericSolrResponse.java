@@ -7,7 +7,7 @@ import java.util.List;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class GenericSolrResponse<T extends SolrDoc> {
+public class GenericSolrResponse<T extends SolrDocBase> {
 
 	@Key
 	private int numFound;

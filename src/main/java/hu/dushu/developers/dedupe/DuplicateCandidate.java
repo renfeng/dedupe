@@ -5,7 +5,7 @@ import com.google.api.client.util.Key;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class DuplicateCandidate extends SolrDoc {
+public class DuplicateCandidate extends SolrDocBase {
 
 	@Key("directory_b")
 	private boolean directory;
@@ -49,6 +49,6 @@ public class DuplicateCandidate extends SolrDoc {
 		return getId() + " directory:" + isDirectory() + " length:" + getLength() + " md5:" + getMd5();
 	}
 
-	public static class SolrSelectResponse extends GenericSolrSelectResponse<DuplicateCandidate> {
+	public static class SolrSelectResponse extends GenericSolrSelectResponse<DuplicateCandidate, DedupeFacetFields> {
 	}
 }

@@ -3,11 +3,13 @@ package hu.dushu.developers.dedupe;
 import com.google.api.client.util.Key;
 
 /**
+ * extends this class to add doc fields
+ *
  * https://cwiki.apache.org/confluence/display/solr/Apache+Solr+Reference+Guide
  * 
  * Created by renfeng on 8/15/15.
  */
-public class SolrDoc {
+public class SolrDocBase {
 
 	/*
 	 * TODO rename and replace the values in solr index

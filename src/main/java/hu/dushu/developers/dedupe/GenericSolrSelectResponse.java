@@ -5,7 +5,7 @@ import com.google.api.client.util.Key;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class GenericSolrSelectResponse<T extends SolrDoc> {
+public class GenericSolrSelectResponse<T extends SolrDocBase, F extends SolrFacetFieldsBase> {
 
 //	@Key
 //	private SolrResponseHeader responseHeader;
@@ -14,7 +14,7 @@ public class GenericSolrSelectResponse<T extends SolrDoc> {
 	private GenericSolrResponse<T> response;
 
 	@Key("facet_counts")
-	private SolrFacetCounts facetCounts;
+	private GenericSolrFacetCounts<F> facetCounts;
 
 	public GenericSolrResponse<T> getResponse() {
 		return response;
@@ -24,11 +24,11 @@ public class GenericSolrSelectResponse<T extends SolrDoc> {
 		this.response = response;
 	}
 
-	public SolrFacetCounts getFacetCounts() {
+	public GenericSolrFacetCounts<F> getFacetCounts() {
 		return facetCounts;
 	}
 
-	public void setFacetCounts(SolrFacetCounts facetCounts) {
+	public void setFacetCounts(GenericSolrFacetCounts<F> facetCounts) {
 		this.facetCounts = facetCounts;
 	}
 }
