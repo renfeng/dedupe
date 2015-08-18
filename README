@@ -1,0 +1,15 @@
+start with jvm opts
+
+-Dcom.sun.management.jmxremote
+
+http://docs.oracle.com/javase/8/docs/technotes/guides/management/jconsole.html
+
+to allow jvisualvm to attach
+
+jvisualvm
+
+http://docs.oracle.com/javase/7/docs/technotes/tools/share/jvisualvm.html
+
+to load logging.properties start with the following jvm opts
+
+-Djava.util.logging.config.file=logging.properties

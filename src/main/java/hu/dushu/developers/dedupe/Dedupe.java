@@ -33,6 +33,14 @@ public class Dedupe {
 				}
 			});
 
+	/*
+	 * wget http://archive.apache.org/dist/lucene/solr/4.10.4/solr-4.10.4-src.tgz
+	 * tar xf solr-4.10.4-src.tgz
+	 * cd solr-4.10.4/solr
+	 * ant example
+	 * cd example
+	 * java -Dsolr.solr.home=example-DIH/solr -jar start.jar
+	 */
 	protected static final String urlBase = "http://localhost:8983/solr/solr/";
 
 	/*

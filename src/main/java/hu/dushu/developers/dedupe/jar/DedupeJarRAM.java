@@ -43,8 +43,8 @@ public class DedupeJarRAM extends DedupeJar {
 	 */
 	static final Logger logger = LoggerFactory.getLogger(DedupeJarRAM.class);
 
-	static final String selectJarUrl = urlBase + "select?wt=json" +
-			"&rows=0&facet=true&facet.field=jar_s&facet.limit=-1" +
+	static final String selectJarWithoutTagUrl = urlBase + "select?wt=json" +
+			"&rows=0&facet=true&facet.field=jar_s&facet.mincount=1&facet.limit=-1" +
 			"&q=type_s:" + SolrDoc.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE +
 			"&fq=!tag_ss:%1$s";
 
@@ -54,7 +54,7 @@ public class DedupeJarRAM extends DedupeJar {
 
 	static final String selectDuplicateJarEntryUrl = urlBase + "select?wt=json" +
 			"&q=type_s:" + SolrDoc.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE +
-			"&fq=jar_s:%1$s+AND+md5_s:%2$s";
+			"&fq=entry_s:%1$s+AND+md5_s:%2$s";
 
 	/*
 	 * for debug purpose
@@ -95,7 +95,7 @@ public class DedupeJarRAM extends DedupeJar {
 
 		Map<String, Integer> map = new HashMap<>();
 
-		String url = String.format(selectJarUrl, URLEncoder.encode(tag, "UTF-8"));
+		String url = String.format(selectJarWithoutTagUrl, URLEncoder.encode(tag, "UTF-8"));
 		logger.info("listing jars without tag, {}", url);
 
 		HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
@@ -186,7 +186,7 @@ public class DedupeJarRAM extends DedupeJar {
 		List<JarEntryDuplicateCandidate> duplicateCandidates = new LinkedList<>();
 
 		String home = System.getProperty("user.home");
-		directoryQueue.offer(new File(home, ".m2/repository"));
+		directoryQueue.offer(new File(home, ".m2/repository/hu"));
 //		directoryQueue.offer(new File("Z:/"));
 
 		File d = directoryQueue.poll();
