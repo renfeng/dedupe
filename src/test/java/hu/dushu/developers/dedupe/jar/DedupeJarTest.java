@@ -17,15 +17,18 @@ public class DedupeJarTest {
 
 		DedupeJar dedupeJar = new DedupeJar();
 
-		dedupeJar.clear();
+//		dedupeJar.clear();
 
 		dedupeJar.refresh();
 
-//		Map<String, Integer> map = dedupeJar.listJarsWithoutTag("approved");
-//		Iterator<Map.Entry<String, Integer>> iterator = map.entrySet().iterator();
-//		if (iterator.hasNext()) {
-//			Map.Entry<String, Integer> entry = iterator.next();
-//			dedupeJar.tag(entry.getKey(), entry.getValue(), "approved");
-//		}
+		Map<String, Integer> map = dedupeJar.listJarsWithoutTag("approved");
+		Iterator<Map.Entry<String, Integer>> iterator = map.entrySet().iterator();
+		if (iterator.hasNext()) {
+			Map.Entry<String, Integer> entry = iterator.next();
+			String jar = entry.getKey();
+			Integer count = entry.getValue();
+//			dedupeJar.tag(jar, count, "approved");
+			System.out.println(jar);
+		}
 	}
 }

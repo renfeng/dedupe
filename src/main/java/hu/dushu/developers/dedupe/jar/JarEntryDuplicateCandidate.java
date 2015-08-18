@@ -30,6 +30,21 @@ public class JarEntryDuplicateCandidate
 	@Key("entry_s")
 	private String entry;
 
+	/*
+	 * http://docs.oracle.com/javase/7/docs/api/java/lang/Package.html
+	 * https://docs.oracle.com/javase/tutorial/deployment/jar/packageman.html
+	 * http://stackoverflow.com/questions/20994766/jar-manifest-file-difference-between-specification-and-implementation
+	 */
+
+	@Key("specificationTitle_s")
+	private String specificationTitle;
+
+	@Key("specificationVender_s")
+	private String specificationVender;
+
+	@Key("specificationVersion_s")
+	private String specificationVersion;
+
 	public JarEntryDuplicateCandidate() {
 		setType(JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE);
 	}
@@ -56,6 +71,30 @@ public class JarEntryDuplicateCandidate
 
 	public void setEntry(String entry) {
 		this.entry = entry;
+	}
+
+	public String getSpecificationTitle() {
+		return specificationTitle;
+	}
+
+	public void setSpecificationTitle(String specificationTitle) {
+		this.specificationTitle = specificationTitle;
+	}
+
+	public String getSpecificationVender() {
+		return specificationVender;
+	}
+
+	public void setSpecificationVender(String specificationVender) {
+		this.specificationVender = specificationVender;
+	}
+
+	public String getSpecificationVersion() {
+		return specificationVersion;
+	}
+
+	public void setSpecificationVersion(String specificationVersion) {
+		this.specificationVersion = specificationVersion;
 	}
 
 	@Override

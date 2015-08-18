@@ -24,6 +24,7 @@ import java.net.URL;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.jar.Manifest;
 import java.util.zip.ZipException;
 
 /**
@@ -107,9 +108,9 @@ public class DedupeJar extends Dedupe {
 	}
 
 	private void init(List<File> directories) {
-//		String home = System.getProperty("user.home");
-//		directories.add(new File(home, ".m2/repository"));
-		directories.add(new File("Z:/"));
+		String home = System.getProperty("user.home");
+		directories.add(new File(home, ".m2/repository"));
+//		directories.add(new File("Z:/"));
 	}
 
 	public void refresh() throws IOException, EncoderException {
@@ -234,33 +235,47 @@ public class DedupeJar extends Dedupe {
 			 */
 				for (File j : jars) {
 					String path = j.getPath();
+					long length = j.length();
 
 					/*
-					 * http://download.java.net/jdk7/archive/b123/docs/api/java/net/JarURLConnection.html
+					 * add jar files to solr for there may be some jar is invalid, and we need to know that
+					 * by searching for jars (!directory_b:true AND !jar_s:[* TO *]) without an entry
 					 */
-					URL url = new URL("jar:file:" + path + "!/");
-					JarURLConnection connection = (JarURLConnection) url.openConnection();
-					try {
-						JarFile jarFile = connection.getJarFile();
-						Enumeration<JarEntry> entries = jarFile.entries();
-						while (entries.hasMoreElements()) {
-							JarEntry jarEntry = entries.nextElement();
+					JarEntryDuplicateCandidate doc = new JarEntryDuplicateCandidate();
+					doc.setId(path);
+					doc.setLength(length);
+					update.add(doc);
 
-							if (jarEntry.isDirectory()) {
-								continue;
+					if (length > 0) {
+						/*
+						 * http://download.java.net/jdk7/archive/b123/docs/api/java/net/JarURLConnection.html
+						 */
+						URL url = new URL("jar:file:" + path + "!/");
+						JarURLConnection connection = (JarURLConnection) url.openConnection();
+						try {
+							Manifest manifest = connection.getManifest();
+
+							JarFile jarFile = connection.getJarFile();
+							Enumeration<JarEntry> entries = jarFile.entries();
+							while (entries.hasMoreElements()) {
+								JarEntry jarEntry = entries.nextElement();
+
+								if (jarEntry.isDirectory()) {
+									continue;
+								}
+
+								String entry = jarEntry.getName();
+
+								JarEntryDuplicateCandidate entryDoc = new JarEntryDuplicateCandidate();
+								entryDoc.setId("jar:file:" + path + "!/" + entry);
+								entryDoc.setLength(jarEntry.getSize());
+								entryDoc.setJar(path);
+								entryDoc.setEntry(entry);
+								update.add(entryDoc);
 							}
-
-							String entry = jarEntry.getName();
-
-							JarEntryDuplicateCandidate doc = new JarEntryDuplicateCandidate();
-							doc.setId("jar:file:" + path + "!/" + entry);
-							doc.setLength(jarEntry.getSize());
-							doc.setJar(path);
-							doc.setEntry(entry);
-							update.add(doc);
+						} catch (ZipException ex) {
+							logger.info("non-zip file skipped: " + path, ex);
 						}
-					} catch (ZipException ex) {
-						logger.info("non-zip file skipped: " + path, ex);
 					}
 				}
 			}
