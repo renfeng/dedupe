@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.util.*;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -108,9 +109,9 @@ public class DedupeJar extends Dedupe {
 	}
 
 	private void init(List<File> directories) {
-		String home = System.getProperty("user.home");
-		directories.add(new File(home, ".m2/repository"));
-//		directories.add(new File("Z:/"));
+//		String home = System.getProperty("user.home");
+//		directories.add(new File(home, ".m2/repository"));
+		directories.add(new File("Z:/"));
 	}
 
 	public void refresh() throws IOException, EncoderException {
@@ -230,9 +231,9 @@ public class DedupeJar extends Dedupe {
 					}
 				}
 
-			/*
-			 * process jar files
-			 */
+				/*
+				 * process jar files
+				 */
 				for (File j : jars) {
 					String path = j.getPath();
 					long length = j.length();
@@ -254,6 +255,12 @@ public class DedupeJar extends Dedupe {
 						JarURLConnection connection = (JarURLConnection) url.openConnection();
 						try {
 							Manifest manifest = connection.getManifest();
+							if (manifest != null) {
+								Attributes mainAttributes = manifest.getMainAttributes();
+								doc.setSpecificationTitle(mainAttributes.getValue("Specification-Title"));
+								doc.setSpecificationVender(mainAttributes.getValue("Specification-Vender"));
+								doc.setSpecificationVersion(mainAttributes.getValue("Specification-Version"));
+							}
 
 							JarFile jarFile = connection.getJarFile();
 							Enumeration<JarEntry> entries = jarFile.entries();
@@ -397,7 +404,7 @@ public class DedupeJar extends Dedupe {
 		 * http://localhost:8983/solr/solr/select?wt=json&rows=0&facet=true&facet.field=jar_s&facet.limit=-1&q=type_s:hu.dushu.developers.dedupe.jar.JarResourceDuplicateCandidate
 		 */
 
-		SortedMap<String, Integer> map = new TreeMap<>();
+		SortedMap<String, Integer> map = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 
 		String url = selectJarWithoutTagUrl(tag);
 		logger.info("listing jars without tag, {}", url);
