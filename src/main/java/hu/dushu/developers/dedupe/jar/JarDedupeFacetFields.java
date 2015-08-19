@@ -16,6 +16,9 @@ public class JarDedupeFacetFields extends DedupeFacetFields {
 	@Key("entry_s")
 	private List<Object> entry;
 
+	@Key("id")
+	private List<Object> id;
+
 	public List<Object> getJar() {
 		return jar;
 	}
@@ -30,5 +33,13 @@ public class JarDedupeFacetFields extends DedupeFacetFields {
 
 	public void setEntry(List<Object> entry) {
 		this.entry = entry;
+	}
+
+	public List<Object> getId() {
+		return id;
+	}
+
+	public void setId(List<Object> id) {
+		this.id = id;
 	}
 }

@@ -18,7 +18,7 @@ public class DedupeJarTest {
 	@Test
 	public void test() throws IOException, EncoderException {
 
-//		dedupeJar.clear();
+		dedupeJar.clear();
 
 		dedupeJar.refresh();
 	}
@@ -34,5 +34,10 @@ public class DedupeJarTest {
 //			dedupeJar.tag(jar, count, "approved");
 			System.out.println(jar);
 		}
+	}
+
+	@Test
+	public void testTag() throws IOException, EncoderException {
+		dedupeJar.tagBySpecification("Commons Collections", "3.2.1", "approved");
 	}
 }

@@ -97,6 +97,23 @@ public class DedupeJar extends Dedupe {
 				"&fq=" + encodeQueryValue("!directory_b:true AND jar_s:[* TO *] AND length_l:" + length);
 	}
 
+	private String selectJarEntriesBySpecification(String title, String version) throws EncoderException {
+		String fq;
+		if (version != null) {
+			fq = String.format("!directory_b:true AND !jar_s:[* TO *] AND " +
+					"specificationTitle_s:\"%1$s\" AND " +
+					"specificationVersion_s:%2$s", title, version);
+		} else {
+			fq = String.format("!directory_b:true AND !jar_s:[* TO *] AND " +
+					"specificationTitle_s:\"%1$s\" AND " +
+					"!specificationVersion_s:[* TO *]", title);
+		}
+		return urlBase + "select?indent=true&wt=json" +
+				"&rows=0&facet=true&facet.field=id&facet.mincount=1&facet.limit=-1" +
+				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&fq=" + encodeQueryValue(fq);
+	}
+
 	public void clear() throws IOException {
 		HashMap<String, Map<String, String>> data = new HashMap<>();
 		HashMap<String, String> query = new HashMap<>();
@@ -109,9 +126,19 @@ public class DedupeJar extends Dedupe {
 	}
 
 	private void init(List<File> directories) {
-//		String home = System.getProperty("user.home");
-//		directories.add(new File(home, ".m2/repository"));
-		directories.add(new File("Z:/"));
+		String home = System.getProperty("user.home");
+		directories.add(new File(home, ".m2/repository/commons-beanutils"));
+		directories.add(new File(home, ".m2/repository/commons-chain"));
+		directories.add(new File(home, ".m2/repository/commons-cli"));
+		directories.add(new File(home, ".m2/repository/commons-codec"));
+		directories.add(new File(home, ".m2/repository/commons-collections"));
+		directories.add(new File(home, ".m2/repository/commons-digester"));
+		directories.add(new File(home, ".m2/repository/commons-httpclient"));
+		directories.add(new File(home, ".m2/repository/commons-io"));
+		directories.add(new File(home, ".m2/repository/commons-lang"));
+		directories.add(new File(home, ".m2/repository/commons-logging"));
+		directories.add(new File(home, ".m2/repository/commons-validator"));
+//		directories.add(new File("Z:/"));
 	}
 
 	public void refresh() throws IOException, EncoderException {
@@ -176,7 +203,9 @@ public class DedupeJar extends Dedupe {
 					JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
 							response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
 					for (JarEntryDuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
-						directories.add(new File(doc.getId()));
+						String path = doc.getId();
+						logger.info(path);
+						directories.add(new File(path));
 						delete.add(doc);
 					}
 				}
@@ -200,8 +229,9 @@ public class DedupeJar extends Dedupe {
 						GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 						JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 
-						duplicateLengthQueue = Collections.asLifoQueue(
-								new ArrayDeque<Long>(facetFields.getLength().size() / 2));
+						int lengths = facetFields.getLength().size() / 2;
+						duplicateLengthQueue = Collections.asLifoQueue(new ArrayDeque<Long>(lengths));
+						logger.info("different lengths to be inspected: " + lengths);
 
 						Iterator<Object> iterator = facetFields.getLength().iterator();
 						while (iterator.hasNext()) {
@@ -328,6 +358,7 @@ public class DedupeJar extends Dedupe {
 			String entry = (String) iterator.next();
 			BigDecimal count = (BigDecimal) iterator.next();
 			map.put(entry, count.intValue());
+			logger.info("jar entry name: {}, occurrences: {}", entry, count);
 		}
 
 		return map;
@@ -423,5 +454,26 @@ public class DedupeJar extends Dedupe {
 		}
 
 		return map;
+	}
+
+	public void tagBySpecification(String title, String version, String... tags) throws EncoderException, IOException {
+
+		String url = selectJarEntriesBySpecification(title, version);
+		logger.info("listing duplicate candidate jar entries, {}", url);
+
+		HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
+		HttpResponse response = request.execute();
+		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
+				response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
+		Iterator<Object> iterator = facetFields.getId().iterator();
+		while (iterator.hasNext()) {
+			String entry = (String) iterator.next();
+			BigDecimal count = (BigDecimal) iterator.next();
+			tag(entry, Integer.MAX_VALUE, tags);
+			logger.info("tagged jar {} with tags {}", entry, tags);
+		}
+
 	}
 }
