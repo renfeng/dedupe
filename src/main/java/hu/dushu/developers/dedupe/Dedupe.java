@@ -133,6 +133,7 @@ public class Dedupe {
 
 					if (f.isDirectory()) {
 						doc.setDirectory(true);
+						update.add(doc);
 					} else {
 						long length = f.length();
 						doc.setLength(length);
@@ -166,11 +167,16 @@ public class Dedupe {
 									logger.info("will remove non-existing file:" + c);
 								}
 							}
-							doc.setMd5(DigestUtils.md5Hex(new FileInputStream(id)));
+							try {
+								doc.setMd5(DigestUtils.md5Hex(new FileInputStream(id)));
+								update.add(doc);
+								logger.info("will update file: " + doc);
+							} catch (FileNotFoundException ex) {
+								delete.add(doc);
+								logger.info("will remove non-existing file:" + doc);
+							}
 						}
 					}
-
-					update.add(doc);
 				}
 
 				if (update.size() > 0) {
