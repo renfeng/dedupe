@@ -122,7 +122,8 @@ public class DedupeJar extends Dedupe {
 	}
 
 	private void init(List<File> directories) {
-//		String home = System.getProperty("user.home");
+		String home = System.getProperty("user.home");
+		directories.add(new File(home, ".m2/repository/"));
 //		directories.add(new File(home, ".m2/repository/commons-beanutils"));
 //		directories.add(new File(home, ".m2/repository/commons-chain"));
 //		directories.add(new File(home, ".m2/repository/commons-cli"));
@@ -134,7 +135,7 @@ public class DedupeJar extends Dedupe {
 //		directories.add(new File(home, ".m2/repository/commons-lang"));
 //		directories.add(new File(home, ".m2/repository/commons-logging"));
 //		directories.add(new File(home, ".m2/repository/commons-validator"));
-		directories.add(new File("Z:/"));
+//		directories.add(new File("Z:/"));
 	}
 
 	public void refresh() throws IOException, EncoderException {
