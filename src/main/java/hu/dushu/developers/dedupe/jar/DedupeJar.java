@@ -483,7 +483,8 @@ public class DedupeJar extends Dedupe {
 			BigDecimal count = (BigDecimal) iterator.next();
 			map.put(ver, count.intValue());
 		}
+	}
 
-		return map;
+	public void listSpecificationsWithoutTag(String tag) {
 	}
 }
