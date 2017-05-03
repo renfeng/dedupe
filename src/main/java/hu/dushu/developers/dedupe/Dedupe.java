@@ -9,10 +9,8 @@ import org.slf4j.LoggerFactory;
 import work.fair24.solr.SolrDeleteRequest;
 import work.fair24.solr.SolrFacetCounts;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
+import java.net.URLEncoder;
 import java.util.*;
 
 /**
@@ -21,17 +19,22 @@ import java.util.*;
 public class Dedupe {
 
 	private static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
-	private static final OkHttpClient client = new OkHttpClient();
-	private static final MediaType media = MediaType.parse("application/json; charset=utf-8");
-	private static final Gson gson = new Gson();
 
-	/*
+	protected static final OkHttpClient client = new OkHttpClient();
+	protected static final MediaType media = MediaType.parse("application/json; charset=utf-8");
+	protected static final Gson gson = new Gson();
+
+	/**
 	 * wget http://archive.apache.org/dist/lucene/solr/4.10.4/solr-4.10.4-src.tgz
 	 * tar xf solr-4.10.4-src.tgz
 	 * cd solr-4.10.4/solr
 	 * ant ivy-bootstrap example
 	 * cd example
 	 * java -Dsolr.solr.home=example-DIH/solr -jar start.jar
+	 * <p>
+	 * for solr 5.x
+	 * bin/solr -e dih -a "-Djetty.host=localhost"
+	 * bin/solr stop -all
 	 */
 	protected final String urlBase = "http://localhost:8983/solr/solr/";
 
@@ -48,22 +51,26 @@ public class Dedupe {
 	/*
 	 * simulates a task queue
 	 */
-	final String selectDirectoryUrl = urlBase + "select?indent=true&wt=json" +
+	protected final String selectDirectoryUrl = urlBase + "select?indent=true&wt=json" +
 			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=directory_b:true";
 
 	/*
 	 * consider the process can stop anytime, the files to be hashed may not be listed in a single query
 	 */
-	final String selectDuplicateLengthUrl = urlBase + "select?indent=true&wt=json" +
-			"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
-			"&q=type_s:" + DuplicateCandidate.class.getName() +
-			"&fq=!directory_b:true";
+	String selectDuplicateLengthUrl() throws UnsupportedEncodingException {
+		return urlBase + "select?indent=true&wt=json" +
+				"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
+				"&q=type_s:" + DuplicateCandidate.class.getName() +
+				"&fq=" + URLEncoder.encode("!directory_b:true AND !md5_s:*", "UTF-8");
+	}
 
-	final String selectFileWithoutMd5Url = urlBase + "select?indent=true&wt=json" +
-			"&rows=" + Integer.MAX_VALUE +
-			"&q=type_s:" + DuplicateCandidate.class.getName() +
-			"&fq=!directory_b:true AND !md5_s:[* TO *] AND length_l:";
+	protected String selectFileWithoutMd5Url(long length) throws UnsupportedEncodingException {
+		return urlBase + "select?indent=true&wt=json" +
+				"&rows=" + Integer.MAX_VALUE +
+				"&q=type_s:" + DuplicateCandidate.class.getName() +
+				"&fq=" + URLEncoder.encode("!directory_b:true AND !md5_s:* AND length_l:" + length, "UTF-8");
+	}
 
 	void refresh() throws IOException {
 
@@ -81,7 +88,7 @@ public class Dedupe {
 				 *
 				 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
 				 */
-				String url = selectFileWithoutMd5Url + length;
+				String url = selectFileWithoutMd5Url(length);
 				logger.info("listing duplicate files, {}", url);
 
 				Request request = new Request.Builder().url(url).build();
@@ -92,6 +99,8 @@ public class Dedupe {
 
 				DuplicateCandidate.SolrSelectResponse selectResponse =
 						gson.fromJson(response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
+				response.body().close();
+
 				for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 					try {
 						doc.setMd5(DigestUtils.md5Hex(new FileInputStream(doc.getId())));
@@ -119,6 +128,8 @@ public class Dedupe {
 
 					DuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 							response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
+					response.body().close();
+
 					for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 						String path = doc.getId();
 						logger.info(path);
@@ -198,20 +209,17 @@ public class Dedupe {
 		} while (true);
 	}
 
-	private Queue<Long> enqueueDuplicateLength() throws IOException {
+	protected Queue<Long> enqueueDuplicateLength() throws IOException {
 
 		Queue<Long> duplicateLengthQueue;
 
 		/*
 		 * retrieve files with same size (without hash)
 		 */
-		String url = selectDuplicateLengthUrl;
+		String url = selectDuplicateLengthUrl();
 		logger.info("listing duplicate length, {}", url);
 
-		Request request = new Request.Builder()
-				.url(url)
-				.build();
-
+		Request request = new Request.Builder().url(url).build();
 		Response response = client.newCall(request).execute();
 		if (!response.isSuccessful()) {
 			throw new IOException("Unexpected code " + response);
@@ -219,6 +227,8 @@ public class Dedupe {
 
 		DuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		SolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		DedupeFacetFields facetFields = facetCounts.getFacetFields();
 

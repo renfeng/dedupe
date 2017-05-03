@@ -165,6 +165,8 @@ public class DedupeJar extends Dedupe {
 
 				JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 						response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+				response.body().close();
+
 				for (JarEntryDuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 					String path = doc.getId();
 					logger.info(path);
@@ -312,6 +314,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		for (JarEntryDuplicateCandidate c : selectResponse.getResponse().getDocs()) {
 			if (c.getMd5() != null) {
 				continue;
@@ -361,6 +365,8 @@ public class DedupeJar extends Dedupe {
 
 			JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 					response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+			response.body().close();
+
 			for (JarEntryDuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 				String md5 = doc.getMd5();
 				String jarEntry = doc.getEntry();
@@ -400,6 +406,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		for (JarEntryDuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 			doc.setTags(tags);
 			update.add(doc);
@@ -426,6 +434,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getJar().iterator();
@@ -464,6 +474,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getId().iterator();
@@ -490,6 +502,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getSpecificationTitle().iterator();
@@ -517,6 +531,8 @@ public class DedupeJar extends Dedupe {
 
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
 				response.body().charStream(), JarEntryDuplicateCandidate.SolrSelectResponse.class);
+		response.body().close();
+
 		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getSpecificationVersion().iterator();
