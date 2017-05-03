@@ -1,8 +1,7 @@
 package hu.dushu.developers.dedupe.jar;
 
-import com.google.api.client.util.Key;
+import com.google.gson.annotations.SerializedName;
 import hu.dushu.developers.dedupe.DuplicateCandidate;
-import hu.dushu.developers.dedupe.GenericSolrSelectResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,7 +14,7 @@ public class JarEntryDuplicateCandidate
 		extends DuplicateCandidate
 		implements Comparable<JarEntryDuplicateCandidate> {
 
-	@Key("tag_ss")
+	@SerializedName("tag_ss")
 	private List<String> tags = new ArrayList<>();
 
 	/**
@@ -24,10 +23,10 @@ public class JarEntryDuplicateCandidate
 	 * context
 	 * http://download.java.net/jdk7/archive/b123/docs/api/java/net/JarURLConnection.html
 	 */
-	@Key("jar_s")
+	@SerializedName("jar_s")
 	private String jar;
 
-	@Key("entry_s")
+	@SerializedName("entry_s")
 	private String entry;
 
 	/*
@@ -36,18 +35,14 @@ public class JarEntryDuplicateCandidate
 	 * http://stackoverflow.com/questions/20994766/jar-manifest-file-difference-between-specification-and-implementation
 	 */
 
-	@Key("specificationTitle_s")
+	@SerializedName("specificationTitle_s")
 	private String specificationTitle;
 
-	@Key("specificationVender_s")
+	@SerializedName("specificationVender_s")
 	private String specificationVender;
 
-	@Key("specificationVersion_s")
+	@SerializedName("specificationVersion_s")
 	private String specificationVersion;
-
-	public JarEntryDuplicateCandidate() {
-		setType(JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE);
-	}
 
 	public List<String> getTags() {
 		return tags;
@@ -112,6 +107,6 @@ public class JarEntryDuplicateCandidate
 	}
 
 	public static class SolrSelectResponse
-			extends GenericSolrSelectResponse<JarEntryDuplicateCandidate, JarDedupeFacetFields> {
+			extends work.fair24.solr.SolrSelectResponse<JarEntryDuplicateCandidate, JarDedupeFacetFields> {
 	}
 }

@@ -1,9 +1,7 @@
 package hu.dushu.developers.dedupe.jar;
 
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.json.JsonHttpContent;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.gson.Gson;
+import okhttp3.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +18,7 @@ import java.util.zip.ZipException;
 /**
  * Created by renfeng on 8/15/15.
  */
-public class DedupeJarRAM extends DedupeJar {
+public class DedupeJarRam extends DedupeJar {
 
 	/**
 	 * -Djava.util.logging.config.file=logging.properties
@@ -34,7 +32,11 @@ public class DedupeJarRAM extends DedupeJar {
 	 * WARNING -> WARN
 	 * SEVERE  -> ERROR
 	 */
-	static final Logger logger = LoggerFactory.getLogger(DedupeJarRAM.class);
+	static final Logger logger = LoggerFactory.getLogger(DedupeJarRam.class);
+
+	private static final OkHttpClient client = new OkHttpClient();
+	private static final MediaType media = MediaType.parse("application/json; charset=utf-8");
+	private static final Gson gson = new Gson();
 
 	/*
 	 * for debug purpose
@@ -141,9 +143,12 @@ public class DedupeJarRAM extends DedupeJar {
 				updateMD5(candidate);
 			}
 
-			HttpRequest request = factory.buildPostRequest(
-					new GenericUrl(updateUrl), new JsonHttpContent(new JacksonFactory(), duplicateCandidates));
-			request.execute();
+			RequestBody body = RequestBody.create(media, gson.toJson(duplicateCandidates));
+			Request request = new Request.Builder().url(updateUrl).post(body).build();
+			Response response = client.newCall(request).execute();
+			if (!response.isSuccessful()) {
+				throw new IOException("Unexpected code " + response);
+			}
 		}
 	}
 

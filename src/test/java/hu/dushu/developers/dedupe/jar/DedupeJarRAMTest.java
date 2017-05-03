@@ -15,7 +15,7 @@ public class DedupeJarRAMTest {
 	@Test
 	public void test() throws IOException, EncoderException {
 
-		DedupeJarRAM dedupeJarRAM = new DedupeJarRAM();
+		DedupeJarRam dedupeJarRAM = new DedupeJarRam();
 
 		dedupeJarRAM.clear();
 

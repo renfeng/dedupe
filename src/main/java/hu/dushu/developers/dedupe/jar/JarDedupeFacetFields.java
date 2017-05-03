@@ -1,6 +1,6 @@
 package hu.dushu.developers.dedupe.jar;
 
-import com.google.api.client.util.Key;
+import com.google.gson.annotations.SerializedName;
 import hu.dushu.developers.dedupe.DedupeFacetFields;
 
 import java.util.List;
@@ -10,19 +10,19 @@ import java.util.List;
  */
 public class JarDedupeFacetFields extends DedupeFacetFields {
 
-	@Key("jar_s")
+	@SerializedName("jar_s")
 	private List<Object> jar;
 
-	@Key("entry_s")
+	@SerializedName("entry_s")
 	private List<Object> entry;
 
-	@Key("id")
+	@SerializedName("id")
 	private List<Object> id;
 
-	@Key("specificationTitle_s")
+	@SerializedName("specificationTitle_s")
 	private List<Object> specificationTitle;
 
-	@Key("specificationVersion_s")
+	@SerializedName("specificationVersion_s")
 	private List<Object> specificationVersion;
 
 	public List<Object> getJar() {

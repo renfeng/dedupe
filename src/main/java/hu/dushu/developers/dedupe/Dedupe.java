@@ -1,13 +1,13 @@
 package hu.dushu.developers.dedupe;
 
-import com.google.api.client.http.*;
-import com.google.api.client.http.javanet.NetHttpTransport;
-import com.google.api.client.http.json.JsonHttpContent;
-import com.google.api.client.json.JsonObjectParser;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.common.collect.Collections2;
+import com.google.gson.Gson;
+import okhttp3.*;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import work.fair24.solr.SolrDeleteRequest;
+import work.fair24.solr.SolrFacetCounts;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -21,16 +21,9 @@ import java.util.*;
 public class Dedupe {
 
 	private static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
-
-	protected final JacksonFactory jsonFactory = new JacksonFactory();
-
-	protected final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
-			new HttpRequestInitializer() {
-				@Override
-				public void initialize(HttpRequest request) throws IOException {
-					request.setParser(new JsonObjectParser(jsonFactory));
-				}
-			});
+	private static final OkHttpClient client = new OkHttpClient();
+	private static final MediaType media = MediaType.parse("application/json; charset=utf-8");
+	private static final Gson gson = new Gson();
 
 	/*
 	 * wget http://archive.apache.org/dist/lucene/solr/4.10.4/solr-4.10.4-src.tgz
@@ -56,7 +49,7 @@ public class Dedupe {
 	 * simulates a task queue
 	 */
 	final String selectDirectoryUrl = urlBase + "select?indent=true&wt=json" +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
+			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=directory_b:true";
 
 	/*
@@ -64,12 +57,12 @@ public class Dedupe {
 	 */
 	final String selectDuplicateLengthUrl = urlBase + "select?indent=true&wt=json" +
 			"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
+			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=!directory_b:true";
 
 	final String selectFileWithoutMd5Url = urlBase + "select?indent=true&wt=json" +
 			"&rows=" + Integer.MAX_VALUE +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
+			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=!directory_b:true AND !md5_s:[* TO *] AND length_l:";
 
 	void refresh() throws IOException {
@@ -91,10 +84,14 @@ public class Dedupe {
 				String url = selectFileWithoutMd5Url + length;
 				logger.info("listing duplicate files, {}", url);
 
-				HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
-				HttpResponse response = request.execute();
+				Request request = new Request.Builder().url(url).build();
+				Response response = client.newCall(request).execute();
+				if (!response.isSuccessful()) {
+					throw new IOException("Unexpected code " + response);
+				}
+
 				DuplicateCandidate.SolrSelectResponse selectResponse =
-						response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
+						gson.fromJson(response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
 				for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 					try {
 						doc.setMd5(DigestUtils.md5Hex(new FileInputStream(doc.getId())));
@@ -114,10 +111,14 @@ public class Dedupe {
 					String url = selectDirectoryUrl;
 					logger.info("picking up directories, {}", url);
 
-					HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
-					HttpResponse response = request.execute();
-					DuplicateCandidate.SolrSelectResponse selectResponse =
-							response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
+					Request request = new Request.Builder().url(url).build();
+					Response response = client.newCall(request).execute();
+					if (!response.isSuccessful()) {
+						throw new IOException("Unexpected code " + response);
+					}
+
+					DuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
+							response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
 					for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
 						String path = doc.getId();
 						logger.info(path);
@@ -138,6 +139,7 @@ public class Dedupe {
 						directories.add(new File(home, "Pictures"));
 						directories.add(new File(home, "Public"));
 						directories.add(new File(home, "Videos"));
+//						directories.add(new File("/home/renfeng/Videos/chrome-dev-summit-2015/sw"));
 					} else {
 						/*
 						 * retrieve files with same size (without hash)
@@ -172,21 +174,24 @@ public class Dedupe {
 			}
 
 			if (update.size() > 0) {
-				HttpRequest request = factory.buildPostRequest(
-						new GenericUrl(updateUrl), new JsonHttpContent(new JacksonFactory(), update));
-				request.execute();
+				RequestBody body = RequestBody.create(media, gson.toJson(update));
+				Request request = new Request.Builder().url(updateUrl).post(body).build();
+				Response response = client.newCall(request).execute();
+				if (!response.isSuccessful()) {
+					throw new IOException("Unexpected code " + response);
+				}
 			}
 			if (delete.size() > 0) {
-				List<String> idList = new ArrayList<>();
-				for (DuplicateCandidate c : delete) {
-					idList.add(c.getId());
-				}
+				List<String> idList = new ArrayList<>(Collections2.transform(delete, input -> input.getId()));
 				SolrDeleteRequest solrDeleteRequest = new SolrDeleteRequest();
 				solrDeleteRequest.setDelete(idList);
 
-				HttpRequest request = factory.buildPostRequest(
-						new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, solrDeleteRequest));
-				request.execute();
+				RequestBody body = RequestBody.create(media, gson.toJson(solrDeleteRequest));
+				Request request = new Request.Builder().url(updateUrl).post(body).build();
+				Response response = client.newCall(request).execute();
+				if (!response.isSuccessful()) {
+					throw new IOException("Unexpected code " + response);
+				}
 			}
 
 			pass++;
@@ -203,11 +208,18 @@ public class Dedupe {
 		String url = selectDuplicateLengthUrl;
 		logger.info("listing duplicate length, {}", url);
 
-		HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
-		HttpResponse response = request.execute();
-		DuplicateCandidate.SolrSelectResponse selectResponse =
-				response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		Request request = new Request.Builder()
+				.url(url)
+				.build();
+
+		Response response = client.newCall(request).execute();
+		if (!response.isSuccessful()) {
+			throw new IOException("Unexpected code " + response);
+		}
+
+		DuplicateCandidate.SolrSelectResponse selectResponse = gson.fromJson(
+				response.body().charStream(), DuplicateCandidate.SolrSelectResponse.class);
+		SolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		DedupeFacetFields facetFields = facetCounts.getFacetFields();
 
 		int lengths = facetFields.getLength().size() / 2;
@@ -226,33 +238,14 @@ public class Dedupe {
 	public void clear() throws IOException {
 		HashMap<String, Map<String, String>> data = new HashMap<>();
 		HashMap<String, String> query = new HashMap<>();
-		query.put("query", "type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE);
+		query.put("query", "type_s:" + DuplicateCandidate.class.getName());
 		data.put("delete", query);
 
-		HttpRequest request = factory.buildPostRequest(
-				new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, data));
-		request.execute();
-	}
-
-	/**
-	 * http://grepcode.com/file_/repo1.maven.org/maven2/org.apache.solr/solr-solrj/4.10.3/org/apache/solr/client/solrj/util/ClientUtils.java/?v=source
-	 * <p/>
-	 * for more information on Escaping Special Characters
-	 * http://lucene.apache.org/core/4_0_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Escaping_Special_Characters
-	 */
-	public String escapeQueryChars(String s) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < s.length(); i++) {
-			char c = s.charAt(i);
-			// These characters are part of the query syntax and must be escaped
-			if (c == '\\' || c == '+' || c == '-' || c == '!' || c == '(' || c == ')' || c == ':'
-					|| c == '^' || c == '[' || c == ']' || c == '\"' || c == '{' || c == '}' || c == '~'
-					|| c == '*' || c == '?' || c == '|' || c == '&' || c == ';' || c == '/'
-					|| Character.isWhitespace(c)) {
-				sb.append('\\');
-			}
-			sb.append(c);
+		RequestBody body = RequestBody.create(media, gson.toJson(data));
+		Request request = new Request.Builder().url(updateUrl).post(body).build();
+		Response response = client.newCall(request).execute();
+		if (!response.isSuccessful()) {
+			throw new IOException("Unexpected code " + response);
 		}
-		return sb.toString();
 	}
 }
