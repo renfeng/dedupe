@@ -1,18 +1,21 @@
 package hu.dushu.developers.dedupe;
 
-import com.google.api.client.http.*;
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpRequest;
+import com.google.api.client.http.HttpRequestFactory;
+import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.codec.net.URLCodec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import work.fair24.solr.SolrDeleteRequest;
+import work.fair24.solr.SolrFacetCounts;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -23,14 +26,8 @@ public class Dedupe {
 	private static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
 
 	protected final JacksonFactory jsonFactory = new JacksonFactory();
-
 	protected final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
-			new HttpRequestInitializer() {
-				@Override
-				public void initialize(HttpRequest request) throws IOException {
-					request.setParser(new JsonObjectParser(jsonFactory));
-				}
-			});
+			request -> request.setParser(new JsonObjectParser(jsonFactory)));
 
 	/*
 	 * wget http://archive.apache.org/dist/lucene/solr/4.10.4/solr-4.10.4-src.tgz
@@ -39,6 +36,10 @@ public class Dedupe {
 	 * ant ivy-bootstrap example
 	 * cd example
 	 * java -Dsolr.solr.home=example-DIH/solr -jar start.jar
+	 * 
+	 * for solr 5.x
+	 * bin/solr -e dih -a "-Djetty.host=localhost"
+	 * bin/solr stop -all
 	 */
 	protected final String urlBase = "http://localhost:8983/solr/solr/";
 
@@ -56,21 +57,25 @@ public class Dedupe {
 	 * simulates a task queue
 	 */
 	final String selectDirectoryUrl = urlBase + "select?indent=true&wt=json" +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
+			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=directory_b:true";
 
 	/*
 	 * consider the process can stop anytime, the files to be hashed may not be listed in a single query
 	 */
-	final String selectDuplicateLengthUrl = urlBase + "select?indent=true&wt=json" +
-			"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
-			"&fq=!directory_b:true";
+	String selectDuplicateLengthUrl() throws UnsupportedEncodingException {
+		return urlBase + "select?indent=true&wt=json" +
+				"&rows=0&facet=true&facet.field=length_l&facet.mincount=2&facet.limit=-1" +
+				"&q=type_s:" + DuplicateCandidate.class.getName() +
+				"&fq=!directory_b:true";
+	}
 
-	final String selectFileWithoutMd5Url = urlBase + "select?indent=true&wt=json" +
-			"&rows=" + Integer.MAX_VALUE +
-			"&q=type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE +
-			"&fq=!directory_b:true AND !md5_s:[* TO *] AND length_l:";
+	protected String selectFileWithoutMd5Url(long length) throws UnsupportedEncodingException {
+		return urlBase + "select?indent=true&wt=json" +
+				"&rows=" + Integer.MAX_VALUE +
+				"&q=type_s:" + DuplicateCandidate.class.getName() +
+				"&fq=" + new URLCodec().encode("!directory_b:true AND !md5_s:* AND length_l:" + length, "UTF-8");
+	}
 
 	void refresh() throws IOException {
 
@@ -88,7 +93,7 @@ public class Dedupe {
 				 *
 				 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
 				 */
-				String url = selectFileWithoutMd5Url + length;
+				String url = selectFileWithoutMd5Url(length);
 				logger.info("listing duplicate files, {}", url);
 
 				HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
@@ -193,21 +198,21 @@ public class Dedupe {
 		} while (true);
 	}
 
-	private Queue<Long> enqueueDuplicateLength() throws IOException {
+	protected Queue<Long> enqueueDuplicateLength() throws IOException {
 
 		Queue<Long> duplicateLengthQueue;
 
 		/*
 		 * retrieve files with same size (without hash)
 		 */
-		String url = selectDuplicateLengthUrl;
+		String url = selectDuplicateLengthUrl();
 		logger.info("listing duplicate length, {}", url);
 
 		HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
 		HttpResponse response = request.execute();
 		DuplicateCandidate.SolrSelectResponse selectResponse =
 				response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		SolrFacetCounts<DedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		DedupeFacetFields facetFields = facetCounts.getFacetFields();
 
 		int lengths = facetFields.getLength().size() / 2;
@@ -226,33 +231,11 @@ public class Dedupe {
 	public void clear() throws IOException {
 		HashMap<String, Map<String, String>> data = new HashMap<>();
 		HashMap<String, String> query = new HashMap<>();
-		query.put("query", "type_s:" + SolrDocBase.DUPLICATE_CANDIDATE_TYPE);
+		query.put("query", "type_s:" + DuplicateCandidate.class.getName());
 		data.put("delete", query);
 
 		HttpRequest request = factory.buildPostRequest(
 				new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, data));
 		request.execute();
-	}
-
-	/**
-	 * http://grepcode.com/file_/repo1.maven.org/maven2/org.apache.solr/solr-solrj/4.10.3/org/apache/solr/client/solrj/util/ClientUtils.java/?v=source
-	 * <p/>
-	 * for more information on Escaping Special Characters
-	 * http://lucene.apache.org/core/4_0_0/queryparser/org/apache/lucene/queryparser/classic/package-summary.html#Escaping_Special_Characters
-	 */
-	public String escapeQueryChars(String s) {
-		StringBuilder sb = new StringBuilder();
-		for (int i = 0; i < s.length(); i++) {
-			char c = s.charAt(i);
-			// These characters are part of the query syntax and must be escaped
-			if (c == '\\' || c == '+' || c == '-' || c == '!' || c == '(' || c == ')' || c == ':'
-					|| c == '^' || c == '[' || c == ']' || c == '\"' || c == '{' || c == '}' || c == '~'
-					|| c == '*' || c == '?' || c == '|' || c == '&' || c == ';' || c == '/'
-					|| Character.isWhitespace(c)) {
-				sb.append('\\');
-			}
-			sb.append(c);
-		}
-		return sb.toString();
 	}
 }

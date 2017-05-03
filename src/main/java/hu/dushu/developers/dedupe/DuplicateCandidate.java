@@ -1,11 +1,12 @@
 package hu.dushu.developers.dedupe;
 
 import com.google.api.client.util.Key;
+import work.fair24.solr.SolrDocument;
 
 /**
  * Created by renfeng on 8/15/15.
  */
-public class DuplicateCandidate extends SolrDocBase {
+public class DuplicateCandidate extends SolrDocument {
 
 	@Key("directory_b")
 	private boolean directory;
@@ -15,10 +16,6 @@ public class DuplicateCandidate extends SolrDocBase {
 
 	@Key("md5_s")
 	private String md5;
-
-	public DuplicateCandidate() {
-		setType(DUPLICATE_CANDIDATE_TYPE);
-	}
 
 	public long getLength() {
 		return length;
@@ -49,6 +46,6 @@ public class DuplicateCandidate extends SolrDocBase {
 		return getId() + " directory:" + isDirectory() + " length:" + getLength() + " md5:" + getMd5();
 	}
 
-	public static class SolrSelectResponse extends GenericSolrSelectResponse<DuplicateCandidate, DedupeFacetFields> {
+	public static class SolrSelectResponse extends work.fair24.solr.SolrSelectResponse<DuplicateCandidate, DedupeFacetFields> {
 	}
 }

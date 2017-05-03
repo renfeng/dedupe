@@ -2,7 +2,6 @@ package hu.dushu.developers.dedupe.jar;
 
 import com.google.api.client.util.Key;
 import hu.dushu.developers.dedupe.DuplicateCandidate;
-import hu.dushu.developers.dedupe.GenericSolrSelectResponse;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,10 +43,6 @@ public class JarEntryDuplicateCandidate
 
 	@Key("specificationVersion_s")
 	private String specificationVersion;
-
-	public JarEntryDuplicateCandidate() {
-		setType(JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE);
-	}
 
 	public List<String> getTags() {
 		return tags;
@@ -112,6 +107,6 @@ public class JarEntryDuplicateCandidate
 	}
 
 	public static class SolrSelectResponse
-			extends GenericSolrSelectResponse<JarEntryDuplicateCandidate, JarDedupeFacetFields> {
+			extends work.fair24.solr.SolrSelectResponse<JarEntryDuplicateCandidate, JarDedupeFacetFields> {
 	}
 }

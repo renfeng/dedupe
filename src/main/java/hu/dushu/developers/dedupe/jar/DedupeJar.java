@@ -6,13 +6,13 @@ import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import hu.dushu.developers.dedupe.Dedupe;
-import hu.dushu.developers.dedupe.GenericSolrFacetCounts;
-import hu.dushu.developers.dedupe.SolrDeleteRequest;
-import hu.dushu.developers.dedupe.SolrDocBase;
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import work.fair24.solr.SolrDeleteRequest;
+import work.fair24.solr.SolrDocument;
+import work.fair24.solr.SolrFacetCounts;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -26,6 +26,8 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.zip.ZipException;
+
+import static work.fair24.solr.SolrDocument.escapeQueryChars;
 
 /**
  * Created by renfeng on 8/15/15.
@@ -45,27 +47,27 @@ public class DedupeJar extends Dedupe {
 	 */
 	String selectDirectoryUrl() throws EncoderException {
 		return urlBase + "select?indent=true&wt=json" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue("directory_b:true");
 	}
 
 	String selectDuplicateJarEntryUrl(String jarEntry, String md5) throws EncoderException {
 		return urlBase + "select?indent=true&wt=json" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue(String.format("entry_s:%1$s AND md5_s:%2$s", jarEntry, md5));
 	}
 
 	String selectJarEntryUrl(String jar, int count) throws EncoderException {
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=" + count +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue("jar_s:\"" + escapeQueryChars(jar) + "\"");
 	}
 
 	String selectJarWithoutTagUrl(String tag) throws EncoderException {
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=0&facet=true&facet.mincount=1&facet.limit=-1&facet.field=jar_s" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue("!tag_ss:" + tag);
 	}
 
@@ -73,7 +75,7 @@ public class DedupeJar extends Dedupe {
 		String fq = "!directory_b:true AND jar_s:[* TO *] AND length_l:" + length;
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=" + Integer.MAX_VALUE +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue(fq);
 	}
 
@@ -90,7 +92,7 @@ public class DedupeJar extends Dedupe {
 		}
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=0&facet=true&facet.mincount=1&facet.limit=-1&facet.field=id" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue(fq);
 	}
 
@@ -98,7 +100,7 @@ public class DedupeJar extends Dedupe {
 		String fq = String.format("!tag_s:%1$s", tag);
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=0&facet=true&facet.mincount=1&facet.limit=-1&facet.field=specificationTitle_s" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue(fq);
 	}
 
@@ -106,14 +108,14 @@ public class DedupeJar extends Dedupe {
 		String fq = String.format("specificationTitle_s:\"%1$s\"", escapeQueryChars(title));
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=0&facet=true&facet.mincount=1&facet.limit=-1&facet.field=specificationVersion_s" +
-				"&q=" + encodeQueryValue("type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE) +
+				"&q=" + encodeQueryValue("type_s:" + JarEntryDuplicateCandidate.class.getName()) +
 				"&fq=" + encodeQueryValue(fq);
 	}
 
 	public void clear() throws IOException {
 		HashMap<String, Map<String, String>> data = new HashMap<>();
 		HashMap<String, String> query = new HashMap<>();
-		query.put("query", "type_s:" + SolrDocBase.JAR_RESOURCE_DUPLICATE_CANDIDATE_TYPE);
+		query.put("query", "type_s:" + JarEntryDuplicateCandidate.class.getName());
 		data.put("delete", query);
 
 		HttpRequest request = factory.buildPostRequest(
@@ -396,7 +398,7 @@ public class DedupeJar extends Dedupe {
 		HttpResponse response = request.execute();
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
 				response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getJar().iterator();
 		while (iterator.hasNext()) {
@@ -430,7 +432,7 @@ public class DedupeJar extends Dedupe {
 		HttpResponse response = request.execute();
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
 				response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getId().iterator();
 		while (iterator.hasNext()) {
@@ -452,7 +454,7 @@ public class DedupeJar extends Dedupe {
 		HttpResponse response = request.execute();
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
 				response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getSpecificationTitle().iterator();
 		while (iterator.hasNext()) {
@@ -475,7 +477,7 @@ public class DedupeJar extends Dedupe {
 		HttpResponse response = request.execute();
 		JarEntryDuplicateCandidate.SolrSelectResponse selectResponse =
 				response.parseAs(JarEntryDuplicateCandidate.SolrSelectResponse.class);
-		GenericSolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
+		SolrFacetCounts<JarDedupeFacetFields> facetCounts = selectResponse.getFacetCounts();
 		JarDedupeFacetFields facetFields = facetCounts.getFacetFields();
 		Iterator<Object> iterator = facetFields.getSpecificationVersion().iterator();
 		while (iterator.hasNext()) {
@@ -483,8 +485,7 @@ public class DedupeJar extends Dedupe {
 			BigDecimal count = (BigDecimal) iterator.next();
 			map.put(ver, count.intValue());
 		}
-	}
 
-	public void listSpecificationsWithoutTag(String tag) {
+		return map;
 	}
 }
