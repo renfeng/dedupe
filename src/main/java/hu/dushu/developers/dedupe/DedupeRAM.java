@@ -1,10 +1,7 @@
 package hu.dushu.developers.dedupe;
 
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpResponse;
-import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.http.*;
+import com.google.api.client.http.apache.ApacheHttpTransport;
 import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -30,10 +27,6 @@ public class DedupeRAM extends Dedupe {
 
 	private static final Logger logger = LoggerFactory.getLogger(DedupeRAM.class);
 
-	protected final JacksonFactory jsonFactory = new JacksonFactory();
-	protected final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
-			request -> request.setParser(new JsonObjectParser(jsonFactory)));
-
 	/**
 	 * save work every minute
 	 */
@@ -58,69 +51,31 @@ public class DedupeRAM extends Dedupe {
 			}
 		}
 
-		logger.info("resuming work");
-		Queue<Long> duplicateLengthQueue = enqueueDuplicateLength();
-
 		long end = System.currentTimeMillis() + INTERVAL;
+		boolean done = false;
+		boolean dirStored = false;
+		Queue<Long> duplicateLengthQueue = null;
 		do {
-			Long length = duplicateLengthQueue.poll();
-			if (length != null) {
-				/*
-				 * update hash of files with same size
-				 *
-				 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
-				 */
-				String url = selectFileWithoutMd5Url(length);
-				logger.debug("listing duplicate files, {}", url);
+			String dir = dirQueue.poll();
+			if (dir == null && dirStored) {
+				String url = selectDirectoryUrl;
+				logger.info("fetching directories, {}", url);
 
 				HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
 				HttpResponse response = request.execute();
 				DuplicateCandidate.SolrSelectResponse selectResponse =
 						response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
 				for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
-					if (doc.getMd5() != null) {
-						continue;
-					}
-					try {
-						doc.setMd5(DigestUtils.md5Hex(new FileInputStream(doc.getId())));
-						update.add(doc);
-						logger.debug("will update file: " + doc);
-					} catch (FileNotFoundException ex) {
-						delete.add(doc);
-						logger.debug("will remove non-existing file:" + doc);
-					}
-				}
-			} else {
-				String dir = dirQueue.poll();
-				if (dir == null) {
-					/*
-					 * retrieve directories from solr
-					 */
-					String url = selectDirectoryUrl;
-					logger.info("picking up directories, {}", url);
-
-					HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
-					HttpResponse response = request.execute();
-					DuplicateCandidate.SolrSelectResponse selectResponse =
-							response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
-					for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
-						String path = doc.getId();
-						dirQueue.add(path);
-						delete.add(doc);
-					}
-
-					dir = dirQueue.poll();
-					if (dir == null) {
-						duplicateLengthQueue = enqueueDuplicateLength();
-						if (duplicateLengthQueue.isEmpty()) {
-							/*
-							 * Mission complete!
-							 */
-							break;
-						}
-					}
+					String path = doc.getId();
+					dirQueue.add(path);
+					delete.add(doc);
 				}
 
+				dirStored = false;
+				dir = dirQueue.poll();
+			}
+
+			if (dir != null) {
 				File[] paths = new File(dir).listFiles();
 				if (paths == null) {
 					logger.warn("inaccessible directory: " + dir);
@@ -136,27 +91,70 @@ public class DedupeRAM extends Dedupe {
 						update.add(candidate);
 					}
 				}
-			}
-
-			if (System.currentTimeMillis() > end) {
-				logger.info("save dir queue and file queue");
-				String path = dirQueue.poll();
-				while (path != null) {
-					File p = new File(path);
-					DuplicateCandidate candidate = new DuplicateCandidate();
-					candidate.setId(p.getPath());
-					candidate.setDirectory(true);
-					update.add(candidate);
-
-					path = dirQueue.poll();
+			} else {
+				if (duplicateLengthQueue == null) {
+					duplicateLengthQueue = enqueueDuplicateLength();
 				}
 
-				if (update.size() > 0) {
+				Long length = duplicateLengthQueue.poll();
+				if (length != null) {
+				/*
+				 * update hash of files with same size
+				 *
+				 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
+				 */
+					String url = selectFileWithoutMd5Url(length);
+					logger.debug("listing duplicate files, {}", url);
+
+					HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
+					HttpResponse response = request.execute();
+					DuplicateCandidate.SolrSelectResponse selectResponse =
+							response.parseAs(DuplicateCandidate.SolrSelectResponse.class);
+					for (DuplicateCandidate doc : selectResponse.getResponse().getDocs()) {
+//					if (doc.getMd5() != null) {
+//						continue;
+//					}
+						try {
+							doc.setMd5(DigestUtils.md5Hex(new FileInputStream(doc.getId())));
+							update.add(doc);
+							logger.debug("will update file: " + doc);
+						} catch (FileNotFoundException ex) {
+							delete.add(doc);
+							logger.debug("will remove non-existing file:" + doc);
+						}
+					}
+				} else {
+					/*
+					 * Mission complete!
+					 */
+					done = true;
+				}
+			}
+
+			if (done || System.currentTimeMillis() > end) {
+				logger.info("saving dir queue and file queue");
+				if (!dirQueue.isEmpty()) {
+					String path = dirQueue.poll();
+					while (path != null) {
+						File p = new File(path);
+						DuplicateCandidate candidate = new DuplicateCandidate();
+						candidate.setId(p.getPath());
+						candidate.setDirectory(true);
+						update.add(candidate);
+
+						path = dirQueue.poll();
+					}
+
+					dirStored = true;
+				}
+
+				if (!update.isEmpty()) {
 					HttpRequest request = factory.buildPostRequest(
 							new GenericUrl(updateUrl), new JsonHttpContent(new JacksonFactory(), update));
 					request.execute();
+					update.clear();
 				}
-				if (delete.size() > 0) {
+				if (!delete.isEmpty()) {
 					List<String> idList = new ArrayList<>(Collections2.transform(delete, input -> input.getId()));
 					SolrDeleteRequest solrDeleteRequest = new SolrDeleteRequest();
 					solrDeleteRequest.setDelete(idList);
@@ -164,8 +162,12 @@ public class DedupeRAM extends Dedupe {
 					HttpRequest request = factory.buildPostRequest(
 							new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, solrDeleteRequest));
 					request.execute();
+					delete.clear();
 				}
 
+				if (done) {
+					break;
+				}
 				end += INTERVAL;
 			}
 		} while (true);

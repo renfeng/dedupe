@@ -1,10 +1,7 @@
 package hu.dushu.developers.dedupe;
 
-import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpResponse;
-import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.http.*;
+import com.google.api.client.http.apache.ApacheHttpTransport;
 import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.json.JsonObjectParser;
 import com.google.api.client.json.jackson2.JacksonFactory;
@@ -24,9 +21,11 @@ import java.util.*;
 public class Dedupe {
 
 	private static final Logger logger = LoggerFactory.getLogger(Dedupe.class);
+	private static final URLCodec CODEC = new URLCodec();
 
 	protected final JacksonFactory jsonFactory = new JacksonFactory();
-	protected final HttpRequestFactory factory = new NetHttpTransport().createRequestFactory(
+	protected final HttpTransport httpTransport = new ApacheHttpTransport();
+	protected final HttpRequestFactory factory = httpTransport.createRequestFactory(
 			request -> request.setParser(new JsonObjectParser(jsonFactory)));
 
 	/*
@@ -57,6 +56,7 @@ public class Dedupe {
 	 * simulates a task queue
 	 */
 	final String selectDirectoryUrl = urlBase + "select?indent=true&wt=json" +
+			"&rows=" + Integer.MAX_VALUE +
 			"&q=type_s:" + DuplicateCandidate.class.getName() +
 			"&fq=directory_b:true";
 
@@ -74,7 +74,7 @@ public class Dedupe {
 		return urlBase + "select?indent=true&wt=json" +
 				"&rows=" + Integer.MAX_VALUE +
 				"&q=type_s:" + DuplicateCandidate.class.getName() +
-				"&fq=" + new URLCodec().encode("!directory_b:true AND !md5_s:* AND length_l:" + length, "UTF-8");
+				"&fq=" + CODEC.encode("!directory_b:true AND !md5_s:* AND length_l:" + length, "UTF-8");
 	}
 
 	void refresh() throws IOException {
@@ -157,7 +157,7 @@ public class Dedupe {
 				for (File d : directories) {
 					File[] files = d.listFiles();
 					if (files == null) {
-						logger.warn("inaccessible directory: " + d.getPath());
+						logger.info("inaccessible directory: " + d.getPath());
 						continue;
 					}
 					for (File f : files) {

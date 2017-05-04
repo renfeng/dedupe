@@ -12,16 +12,16 @@ public class DuplicateCandidate extends SolrDocument {
 	private boolean directory;
 
 	@Key("length_l")
-	private long length;
+	private Long length;
 
 	@Key("md5_s")
 	private String md5;
 
-	public long getLength() {
+	public Long getLength() {
 		return length;
 	}
 
-	public void setLength(long length) {
+	public void setLength(Long length) {
 		this.length = length;
 	}
 
