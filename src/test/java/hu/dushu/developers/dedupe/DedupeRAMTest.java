@@ -12,14 +12,13 @@ public class DedupeRAMTest {
 	@Test
 	public void refresh() throws IOException {
 		String home = System.getProperty("user.home");
-		new DedupeRAM().refresh(new File[]{
+		new DedupeRAM().refresh(
 				new File(home, "Desktop"),
 				new File(home, "Documents"),
 				new File(home, "Downloads"),
 				new File(home, "Music"),
 				new File(home, "Pictures"),
 				new File(home, "Public"),
-				new File(home, "Videos"),
-		});
+				new File(home, "Videos"));
 	}
 }
