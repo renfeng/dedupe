@@ -5,11 +5,14 @@ import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.json.JsonHttpContent;
 import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.common.base.Function;
+import com.google.common.collect.Collections2;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import work.fair24.solr.SolrDeleteRequest;
 
+import javax.annotation.Nullable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -162,18 +165,28 @@ public class DedupeRAM extends Dedupe {
 
 			if (done || update.size() > cap || delete.size() > cap || System.currentTimeMillis() > end) {
 				logger.info("saving dir queue and file queue");
-				if (!dirQueue.isEmpty()) {
-					String path = dirQueue.poll();
-					while (path != null) {
-						File p = new File(path);
+//				if (!dirQueue.isEmpty()) {
+//					String path = dirQueue.poll();
+//					while (path != null) {
+//						File p = new File(path);
+//						DuplicateCandidate candidate = new DuplicateCandidate();
+//						candidate.setId(p.getPath());
+//						candidate.setDirectory(true);
+//						update.add(candidate);
+//
+//						path = dirQueue.poll();
+//					}
+//				}
+				update.addAll(Collections2.transform(dirQueue, new Function<String, DuplicateCandidate>() {
+					@Nullable
+					@Override
+					public DuplicateCandidate apply(@Nullable String input) {
 						DuplicateCandidate candidate = new DuplicateCandidate();
-						candidate.setId(p.getPath());
+						candidate.setId(input);
 						candidate.setDirectory(true);
-						update.add(candidate);
-
-						path = dirQueue.poll();
+						return candidate;
 					}
-				}
+				}));
 
 				if (!update.isEmpty()) {
 					logger.info("updating: {}", update.size());
