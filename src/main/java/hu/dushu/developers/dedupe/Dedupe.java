@@ -13,6 +13,7 @@ import work.fair24.solr.SolrDeleteRequest;
 import work.fair24.solr.SolrFacetCounts;
 
 import java.io.*;
+import java.math.BigDecimal;
 import java.util.*;
 
 /**
@@ -79,21 +80,21 @@ public class Dedupe {
 
 	void refresh() throws IOException {
 
-		Queue<Long> duplicateLengthQueue = enqueueDuplicateLength();
+		Queue<Duplication> duplicateLengthQueue = enqueueDuplicateLength();
 
 		int pass = 0;
 		do {
 			List<DuplicateCandidate> update = new ArrayList<>();
 			List<DuplicateCandidate> delete = new ArrayList<>();
 
-			Long length = duplicateLengthQueue.poll();
-			if (length != null) {
+			Duplication duplication = duplicateLengthQueue.poll();
+			if (duplication != null) {
 				/*
 				 * update hash of files with same size
 				 *
 				 * https://en.wikipedia.org/wiki/Secure_Hash_Algorithm
 				 */
-				String url = selectFileWithoutMd5Url(length);
+				String url = selectFileWithoutMd5Url(duplication.getLength());
 				logger.info("listing duplicate files, {}", url);
 
 				HttpRequest request = factory.buildGetRequest(new GenericUrl(url));
@@ -198,9 +199,7 @@ public class Dedupe {
 		} while (true);
 	}
 
-	protected Queue<Long> enqueueDuplicateLength() throws IOException {
-
-		Queue<Long> duplicateLengthQueue;
+	protected Queue<Duplication> enqueueDuplicateLength() throws IOException {
 
 		/*
 		 * retrieve files with same size (without hash)
@@ -216,16 +215,20 @@ public class Dedupe {
 		DedupeFacetFields facetFields = facetCounts.getFacetFields();
 
 		int lengths = facetFields.getLength().size() / 2;
-		duplicateLengthQueue = Collections.asLifoQueue(new ArrayDeque<Long>(lengths));
+		List<Duplication> list = new ArrayList<>(lengths);
 		logger.info("different lengths to be inspected: " + lengths);
 
 		Iterator<Object> iterator = facetFields.getLength().iterator();
 		while (iterator.hasNext()) {
-			duplicateLengthQueue.offer(Long.parseLong((String) iterator.next()));
-			iterator.next();
+			Duplication duplication = new Duplication();
+			duplication.setLength(Long.parseLong((String) iterator.next()));
+			duplication.setCopies(((BigDecimal) iterator.next()).longValue());
+			list.add(duplication);
 		}
 
-		return duplicateLengthQueue;
+		Collections.sort(list);
+
+		return Collections.asLifoQueue(new ArrayDeque<>(list));
 	}
 
 	public void clear() throws IOException {
