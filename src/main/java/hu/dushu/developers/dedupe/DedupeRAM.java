@@ -17,8 +17,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.SocketException;
-import java.net.SocketTimeoutException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -198,19 +196,20 @@ public class DedupeRAM extends Dedupe {
 						try {
 							request.execute();
 							retry = false;
-						} catch (SocketException ex) {
-							logger.warn("retrying: {}", ex.getMessage());
-							retry = true;
-						} catch (SocketTimeoutException ex) {
+						} catch (Exception ex) {
 							while (cap > update.size()) {
 								cap >>= 1;
 							}
-							logger.info("new cap: {}", cap);
-							remaining.addAll(update.subList(cap, update.size()));
-							update = update.subList(0, cap);
-							retry = true;
+							if (cap > 0) {
+								logger.info("new cap: {}", cap);
+								remaining.addAll(update.subList(cap, update.size()));
+								update = update.subList(0, cap);
+								retry = true;
+							} else {
+								throw ex;
+							}
 						}
-						retry = false;
+//						retry = false;
 					} while (retry);
 //					update.clear();
 					update = remaining;
@@ -222,6 +221,9 @@ public class DedupeRAM extends Dedupe {
 
 					HttpRequest request = factory.buildPostRequest(
 							new GenericUrl(updateUrl), new JsonHttpContent(jsonFactory, solrDeleteRequest));
+					/*
+					 * TODO java.net.SocketException: Too many open files
+					 */
 					request.execute();
 					delete.clear();
 				}
